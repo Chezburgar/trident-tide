@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trident Tide — Quest Installer</title>
+<meta name="description" content="Install Trident Tide, an underwater capture-the-flag VR game for Meta Quest.">
+<style>
+  :root {
+    --azure: #35f0ff;
+    --coral: #ff9a3c;
+    --deep: #041824;
+    --deeper: #020e17;
+    --card: rgba(8, 40, 58, 0.72);
+    --line: rgba(53, 240, 255, 0.22);
+    --text: #d9f1f7;
+    --dim: #7fa8b5;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: linear-gradient(180deg, #06283f 0%, var(--deep) 45%, var(--deeper) 100%);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* rising bubbles */
+  .bubble {
+    position: fixed; bottom: -40px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.35), rgba(120,220,255,0.08));
+    border: 1px solid rgba(160, 230, 255, 0.18);
+    animation: rise linear infinite; pointer-events: none; z-index: 0;
+  }
+  @keyframes rise {
+    from { transform: translateY(0) translateX(0); opacity: .7; }
+    to   { transform: translateY(-110vh) translateX(30px); opacity: 0; }
+  }
+  .wrap { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 48px 20px 80px; }
+  header { text-align: center; padding: 30px 0 34px; }
+  .logo {
+    font-size: clamp(2.6rem, 8vw, 4.4rem); font-weight: 800; letter-spacing: 0.06em;
+    background: linear-gradient(92deg, var(--azure) 20%, #9ff7ff 50%, var(--coral) 85%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 18px rgba(53,240,255,0.35));
+  }
+  .tagline { color: var(--dim); margin-top: 10px; font-size: 1.05rem; }
+  .meta { margin-top: 14px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .chip {
+    border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px;
+    font-size: 0.8rem; color: var(--azure); background: rgba(53,240,255,0.06);
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+    padding: 28px; margin-top: 26px; backdrop-filter: blur(6px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  }
+  .card h2 { font-size: 1.25rem; letter-spacing: 0.04em; margin-bottom: 14px; color: #fff; }
+  .card h2 .num {
+    display: inline-flex; width: 28px; height: 28px; align-items: center; justify-content: center;
+    background: rgba(53,240,255,0.14); color: var(--azure); border-radius: 50%;
+    font-size: 0.95rem; margin-right: 10px; border: 1px solid var(--line);
+  }
+  ol.steps { margin: 12px 0 4px 22px; line-height: 1.75; color: var(--text); }
+  ol.steps li::marker { color: var(--azure); }
+  .note { color: var(--dim); font-size: 0.88rem; margin-top: 12px; line-height: 1.5; }
+  a { color: var(--azure); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px; border: none; cursor: pointer;
+    font-size: 1.05rem; font-weight: 700; letter-spacing: 0.03em;
+    padding: 15px 30px; border-radius: 12px; transition: transform .15s, box-shadow .15s;
+    text-decoration: none;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: linear-gradient(92deg, #0ea8bd, #35f0ff); color: #032530;
+    box-shadow: 0 6px 26px rgba(53, 240, 255, 0.35);
+  }
+  .btn-primary:hover { box-shadow: 0 8px 34px rgba(53, 240, 255, 0.55); }
+  .btn-primary:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
+  .btn-secondary {
+    background: rgba(255, 154, 60, 0.12); color: var(--coral);
+    border: 1px solid rgba(255, 154, 60, 0.4);
+  }
+  .btn-secondary:hover { background: rgba(255, 154, 60, 0.2); }
+  .btnrow { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 18px; }
+  .progress-outer {
+    margin-top: 18px; height: 10px; border-radius: 6px; overflow: hidden;
+    background: rgba(255,255,255,0.07); border: 1px solid var(--line); display: none;
+  }
+  .progress-inner {
+    height: 100%; width: 0%; border-radius: 6px;
+    background: linear-gradient(90deg, #0ea8bd, var(--azure)); transition: width .2s;
+  }
+  #log {
+    display: none; margin-top: 16px; background: #02141f; border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; font-family: Consolas, monospace;
+    font-size: 0.82rem; line-height: 1.55; max-height: 240px; overflow-y: auto;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .ok { color: #46e6a0; } .err { color: #ff6b5e; } .warn { color: var(--coral); }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.92rem; }
+  td { padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); vertical-align: top; }
+  td:first-child { color: var(--azure); white-space: nowrap; font-weight: 600; }
+  .teams { display: flex; gap: 10px; justify-content: center; margin-top: 6px; }
+  .team-a { color: var(--azure); font-weight: 700; }
+  .team-b { color: var(--coral); font-weight: 700; }
+  footer { text-align: center; margin-top: 44px; color: var(--dim); font-size: 0.82rem; line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">TRIDENT TIDE</div>
+    <div class="tagline">Underwater capture-the-flag VR — swim, stun, steal the pearl.</div>
+    <div class="meta">
+      <span class="chip">Meta Quest 2 / 3 / 3S / Pro</span>
+      <span class="chip">v1.0.0</span>
+      <span class="chip">~35 MB</span>
+      <span class="chip">Free · Sideload</span>
+    </div>
+    <div class="teams"><span class="team-a">AZURE</span> vs <span class="team-b">CORAL</span> · best of 3</div>
+  </header>
+
+  <div class="card">
+    <h2><span class="num">1</span>Get your Quest ready (one time)</h2>
+    <ol class="steps">
+      <li>Turn on <b>Developer Mode</b>: create a (free) developer organization at
+        <a href="https://developer.oculus.com/manage/organizations/" target="_blank" rel="noopener">developer.oculus.com</a>,
+        then in the Meta&nbsp;Horizon phone app go to
+        <b>Devices → your headset → Headset&nbsp;settings → Developer&nbsp;Mode → On</b> and reboot the headset.</li>
+      <li>Plug the headset into this computer with a USB cable.</li>
+      <li>Put the headset on and accept <b>“Allow USB debugging”</b> when prompted (check “Always allow”).</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">2</span>Install from this page</h2>
+    <p class="note" style="margin-top:0">Works in <b>Chrome</b> or <b>Edge</b> on desktop. Click, choose your Quest in the
+    pop-up, and the game installs straight over USB — no other software needed.</p>
+    <div class="btnrow">
+      <button class="btn btn-primary" id="installBtn">⚡ Install to Quest</button>
+      <button class="btn btn-secondary" id="launchBtn" style="display:none">▶ Launch in headset</button>
+    </div>
+    <div class="progress-outer" id="progressOuter"><div class="progress-inner" id="progressInner"></div></div>
+    <div id="log"></div>
+    <p class="note">Trouble connecting? Close SideQuest and anything else that uses ADB
+    (or run <code>adb kill-server</code>), unplug/replug the cable, and make sure you accepted the
+    USB-debugging prompt inside the headset. If your browser doesn't support WebUSB, use the manual install below.</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">3</span>Manual install (fallback)</h2>
+    <div class="btnrow">
+      <a class="btn btn-secondary" href="TridentTide.apk" download>⬇ Download TridentTide.apk</a>
+    </div>
+    <ol class="steps" style="margin-top:16px">
+      <li>Install <a href="https://sidequestvr.com/setup-howto" target="_blank" rel="noopener">SideQuest</a> (Advanced Installer) on your PC.</li>
+      <li>Connect the Quest by USB and accept the debugging prompt in the headset.</li>
+      <li>Drag the downloaded <b>TridentTide.apk</b> into SideQuest, or use
+        “Install APK file from folder”. (Command-line folks: <code>adb install TridentTide.apk</code>.)</li>
+    </ol>
+    <p class="note">After installing, find the game in the headset under
+    <b>Library → Unknown Sources → Trident Tide</b>.</p>
+  </div>
+
+  <div class="card">
+    <h2>How to play</h2>
+    <table>
+      <tr><td>Swim</td><td>Hold <b>grip</b> and pull yourself through the water — alternate hands to build speed. Left stick glides, right stick rises/sinks &amp; snap-turns.</td></tr>
+      <tr><td>Trident</td><td>Reach <b>over your right shoulder</b> + grip to draw it from your back.</td></tr>
+      <tr><td>Stab</td><td>Thrust it into an enemy to stun them for 3 seconds.</td></tr>
+      <tr><td>Throw</td><td>Fling and release — it stuns on impact and <b>loyalty-returns</b> to your back like a certain enchanted trident.</td></tr>
+      <tr><td>Steal</td><td>Swim into the enemy cavern and grab the pearl out of their giant clam.</td></tr>
+      <tr><td>Pass</td><td>Pearls can be thrown — release grip mid-swing.</td></tr>
+      <tr><td>Defend</td><td>Grab your own loose pearl and it flies home instantly.</td></tr>
+      <tr><td>Score</td><td>Carry the enemy pearl into your own clam (your pearl must be home). First team to 2 round wins takes the match.</td></tr>
+      <tr><td>Menus</td><td>In the lobby temple, point at a terminal and pull <b>trigger</b> — matchmaking vs bots (1v1 / 2v2 / 3v3, three difficulties) and full character/trident customization.</td></tr>
+    </table>
+  </div>
+
+  <footer>
+    Trident Tide · an underwater VR pearl-clash · installs on Meta Quest via sideloading.<br>
+    Music: “Echo Arena — The Joust”. Capture fanfares: Echo Fanfare series.
+  </footer>
+</div>
+
+<script>
+// decorative bubbles
+for (let i = 0; i < 18; i++) {
+  const b = document.createElement("div");
+  b.className = "bubble";
+  const s = 6 + Math.random() * 22;
+  b.style.width = s + "px"; b.style.height = s + "px";
+  b.style.left = Math.random() * 100 + "vw";
+  b.style.animationDuration = 9 + Math.random() * 14 + "s";
+  b.style.animationDelay = -Math.random() * 20 + "s";
+  document.body.appendChild(b);
+}
+</script>
+
+<script type="module">
+const APK_URL = "TridentTide.apk";
+const REMOTE_PATH = "/data/local/tmp/tridenttide.apk";
+const PKG = "com.chasegames.tridenttide";
+
+const installBtn = document.getElementById("installBtn");
+const launchBtn = document.getElementById("launchBtn");
+const logEl = document.getElementById("log");
+const progOuter = document.getElementById("progressOuter");
+const progInner = document.getElementById("progressInner");
+
+let adbGlobal = null;
+
+function log(msg, cls) {
+  logEl.style.display = "block";
+  const line = document.createElement("div");
+  if (cls) line.className = cls;
+  line.textContent = msg;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function setProgress(frac) {
+  progOuter.style.display = "block";
+  progInner.style.width = Math.round(frac * 100) + "%";
+}
+
+async function loadLibs() {
+  log("Loading ADB library…");
+  const [webusbMod, adbMod, credMod] = await Promise.all([
+    import("https://esm.sh/@yume-chan/adb-daemon-webusb@0.0.24"),
+    import("https://esm.sh/@yume-chan/adb@0.0.24"),
+    import("https://esm.sh/@yume-chan/adb-credential-web@0.0.24"),
+  ]);
+  return { webusbMod, adbMod, credMod };
+}
+
+async function connect(libs) {
+  const { AdbDaemonWebUsbDeviceManager } = libs.webusbMod;
+  const { Adb, AdbDaemonTransport } = libs.adbMod;
+  const CredStore = libs.credMod.default ?? libs.credMod.AdbWebCredentialStore;
+
+  const manager = AdbDaemonWebUsbDeviceManager.BROWSER;
+  if (!manager) throw new Error("WebUSB unavailable");
+
+  log("Choose your Quest in the browser pop-up…");
+  const device = await manager.requestDevice();
+  if (!device) throw new Error("No device selected.");
+  log("Connecting to " + (device.name || "device") + "…");
+  const connection = await device.connect();
+
+  log("Authorizing — if this is the first time, PUT THE HEADSET ON and accept the USB-debugging prompt.", "warn");
+  const transport = await AdbDaemonTransport.authenticate({
+    serial: device.serial,
+    connection,
+    credentialStore: new CredStore(),
+  });
+  log("Connected ✔", "ok");
+  return new Adb(transport);
+}
+
+async function fetchApk() {
+  log("Downloading game package…");
+  const resp = await fetch(APK_URL);
+  if (!resp.ok) throw new Error("APK download failed (" + resp.status + ")");
+  const total = Number(resp.headers.get("Content-Length")) || 0;
+  const reader = resp.body.getReader();
+  const chunks = [];
+  let got = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    got += value.length;
+    if (total) setProgress(got / total * 0.5);
+  }
+  const buf = new Uint8Array(got);
+  let off = 0;
+  for (const c of chunks) { buf.set(c, off); off += c.length; }
+  log("Downloaded " + (got / 1048576).toFixed(1) + " MB ✔", "ok");
+  return buf;
+}
+
+async function pushApk(adb, data) {
+  log("Copying to headset…");
+  const sync = await adb.sync();
+  try {
+    const CHUNK = 256 * 1024;
+    let sent = 0;
+    const file = new ReadableStream({
+      pull(controller) {
+        if (sent >= data.length) { controller.close(); return; }
+        const end = Math.min(sent + CHUNK, data.length);
+        controller.enqueue(data.subarray(sent, end));
+        sent = end;
+        setProgress(0.5 + (sent / data.length) * 0.35);
+      }
+    });
+    await sync.write({ filename: REMOTE_PATH, file, permission: 0o644, mtime: Math.floor(Date.now() / 1000) });
+  } finally {
+    try { await sync.dispose(); } catch (e) {}
+  }
+  log("Copied ✔", "ok");
+}
+
+async function shell(adb, args) {
+  if (adb.subprocess.spawnAndWaitLegacy)
+    return await adb.subprocess.spawnAndWaitLegacy(args);
+  const r = await adb.subprocess.spawnAndWait(args);
+  return (r.stdout || "") + (r.stderr || "");
+}
+
+async function installApk(adb) {
+  log("Installing (the headset does the rest — ~15 seconds)…");
+  setProgress(0.9);
+  const out = await shell(adb, ["pm", "install", "-r", REMOTE_PATH]);
+  if (!/Success/i.test(out)) throw new Error("Installer said: " + out.trim());
+  await shell(adb, ["rm", REMOTE_PATH]).catch?.(() => {});
+  setProgress(1);
+  log("INSTALLED ✔  Find it under Library → Unknown Sources → Trident Tide", "ok");
+}
+
+installBtn.addEventListener("click", async () => {
+  installBtn.disabled = true;
+  logEl.textContent = "";
+  try {
+    if (!("usb" in navigator))
+      throw new Error("This browser has no WebUSB. Use Chrome or Edge on a desktop, or the manual install below.");
+    const libs = await loadLibs();
+    const adb = await connect(libs);
+    adbGlobal = adb;
+    const data = await fetchApk();
+    await pushApk(adb, data);
+    await installApk(adb);
+    launchBtn.style.display = "inline-flex";
+  } catch (e) {
+    console.error(e);
+    let msg = e && e.message ? e.message : String(e);
+    if (/claimInterface|Access denied|Unable to claim/i.test(msg))
+      msg += " — another program is using the headset. Close SideQuest / run `adb kill-server`, replug, retry.";
+    if (/No device selected|NotFoundError/i.test(msg))
+      msg = "No device selected. Plug the Quest in with USB, then try again and pick it in the pop-up.";
+    log("✖ " + msg, "err");
+    log("You can always use the manual install in section 3 below.", "warn");
+  } finally {
+    installBtn.disabled = false;
+  }
+});
+
+launchBtn.addEventListener("click", async () => {
+  if (!adbGlobal) return;
+  try {
+    log("Launching on headset…");
+    await shell(adbGlobal, ["monkey", "-p", PKG, "1"]);
+    log("Put the headset on — you should be in the lobby. Have fun! 🌊", "ok");
+  } catch (e) {
+    log("✖ Launch failed: " + (e.message || e), "err");
+  }
+});
+</script>
+</body>
+</html>
